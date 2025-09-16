@@ -4,6 +4,18 @@ void main() {
   runApp(MyApp());
 }
 
+//Todo class
+class Todo {
+  String title;
+  bool isDone;
+
+  Todo({
+    required this.title,
+    this.isDone = false,
+  });
+}
+
+// App
 class MyApp extends StatelessWidget {
   MyApp({super.key});
 
@@ -21,8 +33,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
+//Startsida
 class MyHomePage extends StatefulWidget {
-
   MyHomePage({super.key, required this.title});
 
   final String title;
@@ -32,10 +44,17 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  String _selectedFilter = 'all';   // håller koll på valt filter
+  String _selectedFilter = 'all'; // vilket filter man valt
+  final List<Todo> _todos = []; //listan med todos
 
   @override
   Widget build(BuildContext context) {
+    final filteredTodos = _todos.where((todo) {
+      if (_selectedFilter == "done") return todo.isDone; 
+      if (_selectedFilter == "undone") return !todo.isDone;
+      return true;
+    }).toList();
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -50,57 +69,51 @@ class _MyHomePageState extends State<MyHomePage> {
               });
             },
             itemBuilder: (BuildContext context) => [
-              const PopupMenuItem(
-                value: 'all',
-                child: Text('All'),
-              ),
-              const PopupMenuItem(
-                value: 'undone',
-                child: Text('Undone'),
-              ),
-              const PopupMenuItem(
-                value: 'done',
-                child: Text('Done'),
-              ),
+              const PopupMenuItem(value: 'all', child: Text('All'),),
+              const PopupMenuItem(value: 'undone', child: Text('Undone'),),
+              const PopupMenuItem(value: 'done', child: Text('Done'),),
             ],
           ),
         ],
       ),
 
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              children: const [
-                ListTile(
-                  leading: Checkbox(value: false, onChanged: null),
-                  title: Text('Write a book'),
-                  trailing: Icon(Icons.close),
-                ),
-                ListTile(
-                  leading: Checkbox(value: false, onChanged: null),
-                  title: Text('Do homework'),
-                  trailing: Icon(Icons.close),
-                ),
-                ListTile(
-                  leading: Checkbox(value: true, onChanged: null),
-                  title: Text(
-                    'Tidy room',
-                    style: TextStyle(decoration: TextDecoration.lineThrough),
-                  ),
-                  trailing: Icon(Icons.close),
-                ),
-                ListTile(
-                  leading: Checkbox(value: false, onChanged: null),
-                  title: Text('Watch TV'),
-                  trailing: Icon(Icons.close),
-                ),
-              ],
+      //Listan
+      body: ListView.builder(
+        itemCount: filteredTodos.length,
+        itemBuilder: (context, index) {
+          final todo = filteredTodos[index];
+          return ListTile(
+            leading: Checkbox(
+              value: todo.isDone,
+              onChanged: (value) {
+                setState(() {
+                  todo.isDone = value ?? false;
+
+                  //sortera listan så att ogjord ligger först och gjorde sist
+                  _todos.sort((a,b){
+                    if (a.isDone == b.isDone) return 0;
+                    return a.isDone? 1 : -1;
+                  });
+                });
+              },
             ),
-          ),
-        ],
+            title: Text(
+              todo.title,
+              style: todo.isDone ? const TextStyle(decoration: TextDecoration.lineThrough): null,
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () {
+                setState(() {
+                  _todos.remove(todo);
+                });
+              },
+            ),
+          );
+        },
       ),
 
+      //+ knappen
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final newTask = await Navigator.push(
@@ -108,18 +121,20 @@ class _MyHomePageState extends State<MyHomePage> {
             MaterialPageRoute(builder: (context) => const NewTaskPage()),
           );
 
-          if (newTask != null && newTask is String) {
-            // Här kan vi senare lägga till uppgiften i listan
-            print("Ny uppgift: $newTask");
+          if (newTask != null && newTask is String &&newTask.trim().isNotEmpty) {
+            setState(() {
+              _todos.add(Todo(title: newTask));
+            });
           }
         },
-        tooltip: 'Add new to do',
+        tooltip: "Add new to do",
         child: const Icon(Icons.add),
       ),
     );
   }
 }
 
+//Lägg till ny todo sida
 class NewTaskPage extends StatelessWidget {
   const NewTaskPage({super.key});
 
@@ -135,7 +150,7 @@ class NewTaskPage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Textfält där man kan skriva sin uppgift
+            // Textfält där man kan skriva sin todo
             TextField(
               controller: _controller,
               decoration: const InputDecoration(
@@ -146,10 +161,10 @@ class NewTaskPage extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            // Knapp för att spara uppgiften
+            // Knapp för att spara todo (+ Add knappen)
             ElevatedButton(
               onPressed: () {
-                // Här ska vi senare lägga till uppgiften i listan
+                // Här ska vi senare lägga till todon i listan
                 Navigator.pop(context, _controller.text); 
               },
               child: const Text('+ Add'),
