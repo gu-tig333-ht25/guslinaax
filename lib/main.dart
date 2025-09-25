@@ -1,148 +1,166 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'todo_provider.dart'; // provider som hanterar logik & API-koppling
 
+//Appens startpunkt
 void main() {
-  runApp(MyApp());
+   runApp(
+    ChangeNotifierProvider(
+      create: (_) => TodoProvider()..loadTodos(),
+      //Provider håller koll på state (listan med todo) och laddar direkt vid start
+      child: const MyApp(),
+    ),
+  );
 }
 
-//Todo class
+//Todo class - modellklass som beskriver en todo
 class Todo {
-  String title;
-  bool isDone;
+  String? id; //Unik ID som vi får från API:et
+  String title; //Själva texten
+  bool isDone; //Om upgiften är done eller undone
 
   Todo({
+    this.id,
     required this.title,
     this.isDone = false,
   });
+
+  //Metod för att skapa en Todo från JSON (Api-data)
+  factory Todo.fromJson(Map<String, dynamic> json) {
+    return Todo(
+      id: json['id'],
+      title: json['title'],
+      isDone: json['done'],
+    );
+  }
 }
 
-// App
+// Root-widget för Appen
 class MyApp extends StatelessWidget {
-  MyApp({super.key});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
+      debugShowCheckedModeBanner: false, //tar bort debug-banderoll i hörnet
       title: 'Flutter Demo',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromRGBO(255, 131, 222, 1)),
         useMaterial3: true,
       ),
-      home: MyHomePage(title: 'TIG333 TO DO LIST:'),
+      home: const MyHomePage(title: 'TIG333 TO DO LIST:'), //startsidan
     );
   }
 }
 
 //Startsida
 class MyHomePage extends StatefulWidget {
-  MyHomePage({super.key, required this.title});
+  const MyHomePage({super.key, required this.title});
 
-  final String title;
+  final String title; //titel för appBar
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  String _selectedFilter = 'all'; // vilket filter man valt
-  final List<Todo> _todos = []; //listan med todos
 
   @override
   Widget build(BuildContext context) {
-    final filteredTodos = _todos.where((todo) {
-      if (_selectedFilter == "done") return todo.isDone; 
-      if (_selectedFilter == "undone") return !todo.isDone;
-      return true;
-    }).toList();
+  //Hämtar provider (listan med todos & funktioner)
+  final todoProvider = Provider.of<TodoProvider>(context);
+  final filteredTodos = todoProvider.todos; //filtrerat lista beroende på filter
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-
-        // Högra hörnet i appbaren:
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              setState(() {
-                _selectedFilter = value;
-              });
-            },
-            itemBuilder: (BuildContext context) => [
-              const PopupMenuItem(value: 'all', child: Text('All'),),
-              const PopupMenuItem(value: 'undone', child: Text('Undone'),),
-              const PopupMenuItem(value: 'done', child: Text('Done'),),
-            ],
+  return Scaffold(
+    appBar: AppBar(
+      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      title: Text(widget.title),
+      actions: [
+        //Dropdown-meny för att välja filter
+        PopupMenuButton<String>(
+          onSelected: (value) => todoProvider.setFilter(value),
+          itemBuilder: (BuildContext context) => const[
+            PopupMenuItem(value: 'all', child: Text('All')),
+            PopupMenuItem(value: 'undone', child: Text('Undone')),
+            PopupMenuItem(value: 'done', child: Text('Done')),
+          ],
+        ),
+      ],
+    ),
+    
+    //Listan med todos
+    body: ListView.builder(
+      itemCount: filteredTodos.length,
+      //Körs en gång för varje rad i listan
+      itemBuilder: (context, index) {
+        final todo = filteredTodos[index];
+        //retunerar en widget som ska visas för just denna todo
+        return ListTile(
+          leading: Checkbox( 
+            value: todo.isDone, 
+            //när man klickar i boxen kallas toggleTodo i providern
+            onChanged: (_) => todoProvider.toggleTodo(todo), 
+          ), 
+          title: Text( 
+            todo.title, 
+            //gör så att färdiga todos från genomstruken text
+            style: todo.isDone ? const TextStyle(
+            decoration: TextDecoration.lineThrough) : null, 
+          ),   
+          trailing: IconButton( 
+            icon: const Icon(Icons.close), 
+            onPressed: () => todoProvider.removeTodo(todo),
           ),
-        ],
-      ),
+        );
+      },
+    ),
+    
+    //Knapp för att lägga till todo
+    floatingActionButton: FloatingActionButton(
+      onPressed: () async {
+        //Öppnar new task page och väntar på resultat
+        final newTask = await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const NewTaskPage()),
+        );
 
-      //Listan
-      body: ListView.builder(
-        itemCount: filteredTodos.length,
-        itemBuilder: (context, index) {
-          final todo = filteredTodos[index];
-          return ListTile(
-            leading: Checkbox(
-              value: todo.isDone,
-              onChanged: (value) {
-                setState(() {
-                  todo.isDone = value ?? false;
-
-                  //sortera listan så att ogjord ligger först och gjorde sist
-                  _todos.sort((a,b){
-                    if (a.isDone == b.isDone) return 0;
-                    return a.isDone? 1 : -1;
-                  });
-                });
-              },
-            ),
-            title: Text(
-              todo.title,
-              style: todo.isDone ? const TextStyle(decoration: TextDecoration.lineThrough): null,
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () {
-                setState(() {
-                  _todos.remove(todo);
-                });
-              },
-            ),
-          );
-        },
-      ),
-
-      //+ knappen
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final newTask = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const NewTaskPage()),
-          );
-
-          if (newTask != null && newTask is String &&newTask.trim().isNotEmpty) {
-            setState(() {
-              _todos.add(Todo(title: newTask));
-            });
-          }
-        },
-        tooltip: "Add new to do",
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
+        //Om man skrivit något läggs det till
+        if (newTask != null && newTask is String && newTask.trim().isNotEmpty) {
+          await todoProvider.addTodo(newTask);
+        }
+      },
+      tooltip: "Add new to do",
+      child: const Icon(Icons.add),
+    ),
+  );
+}
 }
 
-//Lägg till ny todo sida
-class NewTaskPage extends StatelessWidget {
+//Lägg till ny todo sida 
+//StatefulWidget används för att behålla TextEditingCOntroller mellan rebuilds
+class NewTaskPage extends StatefulWidget {
   const NewTaskPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final TextEditingController _controller = TextEditingController();
+  State<NewTaskPage> createState() => _NewTaskPageState();
+}
 
+//State-klassen för NewTakPage
+class _NewTaskPageState extends State<NewTaskPage> {
+  //TextEditingController för att läsa texten från Textfield (placeras här för att bevaras mellan rebuild)
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    //frigör minne när sidan stängs
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
+      //Appbar högst upp med titel
       appBar: AppBar(
         title: const Text('Add new to do'),
       ),
@@ -158,13 +176,11 @@ class NewTaskPage extends StatelessWidget {
                 border: OutlineInputBorder(),
               ),
             ),
-
             const SizedBox(height: 20),
-
             // Knapp för att spara todo (+ Add knappen)
             ElevatedButton(
               onPressed: () {
-                // Här ska vi senare lägga till todon i listan
+                // När man trycker på knappen stängs sidan och skickar tillbaka texten som skrivits
                 Navigator.pop(context, _controller.text); 
               },
               child: const Text('+ Add'),
