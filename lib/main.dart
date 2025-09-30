@@ -136,7 +136,7 @@ class _MyHomePageState extends State<MyHomePage> {
 }
 }
 
-//Lägg till ny todo sida 
+//Lägg till ny todo-sida 
 //StatefulWidget används för att behålla TextEditingCOntroller mellan rebuilds
 class NewTaskPage extends StatefulWidget {
   const NewTaskPage({super.key});
