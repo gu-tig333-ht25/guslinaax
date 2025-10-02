@@ -68,72 +68,72 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
   //Hämtar provider (listan med todos & funktioner)
-  final todoProvider = Provider.of<TodoProvider>(context);
-  final filteredTodos = todoProvider.todos; //filtrerat lista beroende på filter
+    final todoProvider = Provider.of<TodoProvider>(context);
+    final filteredTodos = todoProvider.todos; //filtrerat lista beroende på filter
 
-  return Scaffold(
-    appBar: AppBar(
-      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      title: Text(widget.title),
-      actions: [
-        //Dropdown-meny för att välja filter
-        PopupMenuButton<String>(
-          onSelected: (value) => todoProvider.setFilter(value),
-          itemBuilder: (BuildContext context) => const[
-            PopupMenuItem(value: 'all', child: Text('All')),
-            PopupMenuItem(value: 'undone', child: Text('Undone')),
-            PopupMenuItem(value: 'done', child: Text('Done')),
-          ],
-        ),
-      ],
-    ),
-    
-    //Listan med todos
-    body: ListView.builder(
-      itemCount: filteredTodos.length,
-      //Körs en gång för varje rad i listan
-      itemBuilder: (context, index) {
-        final todo = filteredTodos[index];
-        //retunerar en widget som ska visas för just denna todo
-        return ListTile(
-          leading: Checkbox( 
-            value: todo.isDone, 
-            //när man klickar i boxen kallas toggleTodo i providern
-            onChanged: (_) => todoProvider.toggleTodo(todo), 
-          ), 
-          title: Text( 
-            todo.title, 
-            //gör så att färdiga todos från genomstruken text
-            style: todo.isDone ? const TextStyle(
-            decoration: TextDecoration.lineThrough) : null, 
-          ),   
-          trailing: IconButton( 
-            icon: const Icon(Icons.close), 
-            onPressed: () => todoProvider.removeTodo(todo),
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(widget.title),
+        actions: [
+          //Dropdown-meny för att välja filter
+          PopupMenuButton<String>(
+            onSelected: (value) => todoProvider.setFilter(value),
+            itemBuilder: (BuildContext context) => const[
+              PopupMenuItem(value: 'all', child: Text('All')),
+              PopupMenuItem(value: 'undone', child: Text('Undone')),
+              PopupMenuItem(value: 'done', child: Text('Done')),
+            ],
           ),
-        );
-      },
-    ),
+        ],
+      ),
     
-    //Knapp för att lägga till todo
-    floatingActionButton: FloatingActionButton(
-      onPressed: () async {
-        //Öppnar new task page och väntar på resultat
-        final newTask = await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const NewTaskPage()),
-        );
+      //Listan med todos
+      body: ListView.builder(
+        itemCount: filteredTodos.length,
+        //Körs en gång för varje rad i listan
+        itemBuilder: (context, index) {
+          final todo = filteredTodos[index];
+          //retunerar en widget som ska visas för just denna todo
+          return ListTile(
+            leading: Checkbox( 
+              value: todo.isDone, 
+              //när man klickar i boxen kallas toggleTodo i providern
+              onChanged: (_) => todoProvider.toggleTodo(todo), 
+            ), 
+            title: Text( 
+              todo.title, 
+              //gör så att färdiga todos från genomstruken text
+              style: todo.isDone ? const TextStyle(
+              decoration: TextDecoration.lineThrough) : null, 
+            ),   
+            trailing: IconButton( 
+              icon: const Icon(Icons.close), 
+              onPressed: () => todoProvider.removeTodo(todo),
+            ),
+          );
+        },
+      ),
+    
+      //Knapp för att lägga till todo
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          //Öppnar new task page och väntar på resultat
+          final newTask = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const NewTaskPage()),
+          );
 
-        //Om man skrivit något läggs det till
-        if (newTask != null && newTask is String && newTask.trim().isNotEmpty) {
-          await todoProvider.addTodo(newTask);
-        }
-      },
-      tooltip: "Add new to do",
-      child: const Icon(Icons.add),
-    ),
-  );
-}
+          //Om man skrivit något läggs det till
+          if (newTask != null && newTask is String && newTask.trim().isNotEmpty) {
+            await todoProvider.addTodo(newTask);
+          }
+        },
+        tooltip: "Add new to do",
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
 }
 
 //Lägg till ny todo sida 
